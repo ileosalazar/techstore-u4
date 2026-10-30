@@ -47,26 +47,30 @@ class EventView(BaseModel):
 
 class OrderView(BaseModel):
     id: str
-    customer_id: str
-    status: OrderStatus
-    units: int
-    currency: Literal["MXN"]
+   # customer_id: str
+    estado: OrderStatus
+    unidades: int
+    #currency: Literal["MXN"]
+    subtotal: str
+   # discount_percent: str
+    descuento: str
     total: str
-    discount_percent: str
-    discount: str
-    payable: str
-    items: list[ItemView]
-    events: list[EventView]
+   # items: list[ItemView]
+    #events: list[EventView]
+
+class ConfirmOrderView(OrderView):
+    mensaje: str
+
 
 
 def to_view(order):
     quote = quote_discount(order)
     return {
         "id": order.id, "customer_id": order.customer.id,
-        "status": order.status.value, "units": order.units, "currency": "MXN",
-        "total": f"{order.total.amount:.2f}",
+        "estado": order.status.value, "unidades": order.units, "currency": "MXN",
+        "subtotal": f"{order.total.amount:.2f}",
         "discount_percent": f"{quote.rate * 100:.0f}",
-        "discount": f"{quote.discount.amount:.2f}", "payable": f"{quote.payable.amount:.2f}",
+        "descuento": f"{quote.discount.amount:.2f}", "total": f"{quote.payable.amount:.2f}",
         "items": [{"sku": x.sku, "quantity": x.quantity,
                    "unit_price": f"{x.unit_price.amount:.2f}",
                    "subtotal": f"{x.subtotal.amount:.2f}"} for x in order.items],
@@ -124,9 +128,9 @@ def create_app():
         return JSONResponse(
         status_code=status,
         content={
-            "detail": detail,
-            "error": type(exc).__name__,
-            "message": message
+            #"detail": detail,
+           # "error": type(exc).__name__,
+            "mensaje": message
         }
         )
 
@@ -153,9 +157,9 @@ def create_app():
         return JSONResponse(
             status_code=exc.status_code,
             content={
-                "detail": exc.detail,
-                "error": type(exc).__name__,
-                "message": message
+                #"detail": exc.detail,
+                #"error": type(exc).__name__,
+                "mensaje": message
             }
         )
 
@@ -168,15 +172,15 @@ def create_app():
     errors = {404: {"description": "Pedido inexistente", 
                     "content": {"application/json": {"example": {"detail": "Pedido inexistente",
                                                                  "error": "HTTPException",
-                                                                 "message": "Pedido inexistente"}}}},
+                                                                 "mensaje": "Pedido inexistente"}}}},
               409: {"description": "Transición no permitida",
                     "content": {"application/json": {"example": {"detail": "Transición no permitida",
                                                                  "error": "HTTPException",
-                                                                 "message": "Pedido no puede confirmarse dos veces"}}}},
+                                                                 "mensaje": "Pedido no puede confirmarse dos veces"}}}},
               422: {"description": "Datos o regla de negocio inválidos",
                     "content": {"application/json": {"example": {"detail": "Datos o regla de negocio inválidos",
                                                                  "error": "HTTPException",
-                                                                 "message": "Pedido sin artículos"}}}}}
+                                                                 "mensaje": "Pedido sin artículos"}}}}}
 
 
     @api.get("/orders/{order_id}", response_model=OrderView, tags=["Pedidos"], responses=errors, )
@@ -184,12 +188,16 @@ def create_app():
         with api.state.lock:
             return to_view(order_for(order_id))
 
-    @api.post("/orders/{order_id}/confirm", response_model=OrderView, tags=["Pedidos"], responses=errors)
+    @api.post("/orders/{order_id}/confirm", response_model=ConfirmOrderView, tags=["Pedidos"], responses=errors)
     def confirm_order(order_id: str):
         with api.state.lock:
             order = order_for(order_id)
             order.confirm()
-            return to_view(order)
+
+            response = to_view(order)
+            response["mensaje"] = "Pedido confirmado correctamente."
+
+            return response
 
     @api.post("/orders/{order_id}/ship", response_model=OrderView, tags=["Pedidos"], responses=errors)
     def ship_order(order_id: str, body: ShipBody):

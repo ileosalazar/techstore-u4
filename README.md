@@ -7,7 +7,7 @@ Integrantes: Roberto Santana Trujillo (2227084) e Isaías Leonardo Salazar Torre
 Repositorio: https://github.com/ileosalazar/techstore-u4
 
 ## Instalación
-
+x
 Requiere Python 3.11 o superior; se verificó con Python 3.12.14. Clona el repositorio y entra a su carpeta.
 
 ```bash
